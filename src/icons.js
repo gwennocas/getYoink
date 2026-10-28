@@ -1,0 +1,20 @@
+const paths = {
+  download: '<path d="M12 3v12m-5-5 5 5 5-5M4 16v5h16v-5"/>',
+  arrow: '<path d="M7 17 17 7M7 7h10v10"/>',
+  link: '<path d="m10 13 4-4m-6 6-2 2a4 4 0 0 1-6-6l4-4m12 2 2-2a4 4 0 0 0-6-6l-4 4" transform="translate(3 3) scale(.85)"/>',
+  video: '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3Z"/>',
+  music: '<path d="M9 17V5l11-2v12M9 8l11-2"/><ellipse cx="6" cy="18" rx="3" ry="3"/><ellipse cx="17" cy="16" rx="3" ry="3"/>',
+  history: '<path d="M3 11a9 9 0 1 1 2.6 7M3 4v7h7m2-4v6l4 2"/>',
+  settings: '<path d="M4 7h16M4 17h16"/><circle cx="9" cy="7" r="3"/><circle cx="15" cy="17" r="3"/>',
+  refresh: '<path d="M20 8a8 8 0 0 0-14-3L3 8m0-5v5h5m-4 8a8 8 0 0 0 14 3l3-3m0 5v-5h-5"/>',
+  clipboard: '<rect x="5" y="5" width="14" height="16" rx="2"/><rect x="9" y="2" width="6" height="5" rx="1"/>',
+  check: '<path d="m5 12 4 4L19 6"/>',
+  close: '<path d="m6 6 12 12M18 6 6 18"/>',
+  folder: '<path d="M3 7V5h7l2 3h9v12H3Z"/>',
+  shield: '<path d="m12 3 8 3v6c0 5-8 9-8 9s-8-4-8-9V6Z"/><path d="m8 12 3 3 5-6"/>',
+  youtube: '<rect x="2" y="5" width="20" height="14" rx="4"/><path d="m10 9 5 3-5 3Z"/>',
+  instagram: '<rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><path d="M17 7h.01"/>',
+  queue: '<path d="M4 5h16M4 11h10M4 17h8m5-3v7m-3-3 3 3 3-3"/>',
+  bolt: '<path d="m13 2-9 12h7l-1 8 10-12h-7Z"/>',
+};
+export const icon = (name, cls = '') => `<svg class="icon ${cls}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${paths[name] || paths.download}</svg>`;

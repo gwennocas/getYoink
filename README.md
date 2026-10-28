@@ -1,0 +1,96 @@
+# getYoink
+
+Um link. Seu arquivo. Aplicativo Tauri 2 + Rust, com integração Android em Kotlin para yt-dlp e FFmpeg. Interface responsiva em português com tema Gruvbox, fundo pontilhado e cartões de bordas finas.
+
+## Funcionalidades
+
+- YouTube: vídeos e Shorts; Instagram: vídeos de publicações e Reels públicos.
+- MP4 com limite de 480p, 720p, 1080p ou melhor resolução disponível.
+- Extração MP3 em 128, 192 ou 320 kbps. A qualidade da fonte limita o resultado.
+- Consulta de título, autor e duração; fila sequencial e progresso real do motor.
+- Histórico local dos downloads concluídos, com caminho do arquivo.
+- Android: exportação via MediaStore para `Downloads/getYoink`, sem acesso amplo ao armazenamento.
+- Ajustes → **Atualizar yt-dlp** baixa a versão estável dentro do Android. Não requer reinstalar o APK.
+- Sem login, cookies ou suporte a publicações privadas. O app ignora configurações externas do yt-dlp.
+
+## Desenvolvimento no Windows
+
+Pré-requisitos: Node.js LTS, Rust estável (MSVC), Visual Studio Build Tools com C++, JDK 21, SDK Android com plataforma 36, Build Tools 36, Platform Tools e NDK. O Android mínimo deste projeto é 10 (API 29).
+
+```powershell
+npm install
+rustup target add aarch64-linux-android
+```
+
+O script `scripts/env.ps1` configura a sessão atual com o JDK Temurin instalado e o SDK localizado em `.tools/android-sdk`. Não muda variáveis globais do Windows. Em outro computador, configure `JAVA_HOME`, `ANDROID_HOME` e `NDK_HOME` para suas instalações.
+
+```powershell
+. ./scripts/env.ps1
+npm run tauri -- android init --ci # apenas se src-tauri/gen/android ainda não existir
+npm run android:build
+```
+
+No Windows, o Tauri precisa criar links simbólicos em cada compilação. Se o Windows negar essa etapa, execute `scripts/build-apk.ps1` em um PowerShell aberto como administrador. O projeto não precisa habilitar o modo de desenvolvedor do Windows.
+
+O APK ARM64 será gerado em `src-tauri/gen/android/app/build/outputs/apk/`. Builds release sem assinatura não podem ser instalados diretamente. Para um APK de teste assinado com a chave de debug:
+
+```powershell
+. ./scripts/env.ps1
+npm run tauri -- android build --debug --apk --target aarch64
+```
+
+O mesmo comando está disponível como `npm run android:apk`.
+
+## Testar por Wi-Fi (Android 11+)
+
+PC e celular precisam estar na mesma rede. No celular: Opções do desenvolvedor → Depuração sem fio → Parear dispositivo com código. O código de pareamento é temporário; informe-o somente quando formos conectar.
+
+```powershell
+. ./scripts/env.ps1
+adb pair IP_DO_CELULAR:PORTA_DE_PAREAMENTO
+# O ADB solicita o código sem gravá-lo no comando.
+adb connect IP_DO_CELULAR:PORTA_DE_CONEXAO
+adb devices -l
+adb install -r CAMINHO_DO_APK_DEBUG
+adb shell am start -n app.getyoink.mobile/.MainActivity
+```
+
+A porta de conexão exibida na tela principal de depuração sem fio é diferente da porta de pareamento. Desative a depuração sem fio quando terminar.
+
+## Prévia e verificações
+
+```powershell
+npm run dev
+npm run build
+npm test
+cargo test --manifest-path src-tauri/plugins/downloader/Cargo.toml
+```
+
+No navegador, a interface abre como prévia e explica que downloads exigem o app nativo. Não há downloads simulados. No desktop, instale `yt-dlp` e `ffmpeg` no PATH; opcionalmente configure `YTDLP_PATH`. O atualizador desktop usa `yt-dlp --update`, então depende de uma instalação binária que suporte autoatualização.
+
+### Validação em aparelho real — 28/10/2026
+
+Testado via ADB por Wi-Fi em Moto G7 Plus (ARM64), LineageOS com Android 15:
+
+- APK debug compilado, assinatura verificada e instalação concluída.
+- Atualização interna para yt-dlp `2026.10.26` concluída e preservada ao atualizar o app.
+- Consulta e download do YouTube em MP4 e conversão para MP3 a 320 kbps.
+- Consulta e download em MP4 de um Reel público do Instagram, sem cookies.
+- Arquivos exportados para `Downloads/getYoink` e histórico atualizado.
+- Cinco testes JavaScript e dois testes Rust aprovados; `cargo check` da aplicação aprovado.
+
+APK de teste local: `artifacts/getYoink-0.1.0-arm64-debug.apk` (ignorado pelo Git). O APK de debug inclui ferramentas de diagnóstico e é maior que uma compilação de distribuição. Não há assinatura de produção configurada.
+
+## Limites desta primeira versão
+
+Mantenha o app aberto durante o download. A fila em andamento não sobrevive ao fechamento do processo; o histórico concluído persiste no armazenamento local da WebView. Não há serviço em primeiro plano, retomada após reinício, playlists, fotos ou login. Alguns links públicos podem exigir autenticação ou sofrer bloqueio do provedor; nesses casos o app apresenta a falha e não tenta usar cookies. Atualizar o yt-dlp não garante contornar restrições do site.
+
+## Estrutura
+
+- `src/`: interface e fila.
+- `src-tauri/`: aplicação Rust/Tauri e permissões da janela local.
+- `src-tauri/plugins/downloader/`: validação, comandos e integração desktop.
+- `src-tauri/plugins/downloader/android/`: yt-dlp, FFmpeg, atualização e MediaStore.
+- `scripts/`: ambiente e comandos de desenvolvimento Android.
+
+Referências: [Tauri mobile plugins](https://v2.tauri.app/develop/plugins/develop-mobile/), [pré-requisitos Tauri](https://v2.tauri.app/start/prerequisites/), [youtubedl-android](https://github.com/yausername/youtubedl-android), [yt-dlp](https://github.com/yt-dlp/yt-dlp).

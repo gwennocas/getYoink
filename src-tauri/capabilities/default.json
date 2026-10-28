@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "A janela local pode consultar, baixar e atualizar o motor público de downloads.",
+  "windows": ["main"],
+  "permissions": ["core:default", "downloader:default"]
+}

@@ -1,0 +1,21 @@
+[package]
+name = "getyoink"
+version = "0.1.0"
+description = "Vídeos e áudios públicos, direto para o seu dispositivo."
+authors = ["Gwen"]
+edition = "2021"
+
+[workspace]
+members = ["plugins/downloader"]
+resolver = "2"
+
+[lib]
+name = "getyoink_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-downloader = { path = "plugins/downloader" }

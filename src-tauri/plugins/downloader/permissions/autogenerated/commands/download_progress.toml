@@ -1,0 +1,13 @@
+# Automatically generated - DO NOT EDIT!
+
+"$schema" = "../../schemas/schema.json"
+
+[[permission]]
+identifier = "allow-download-progress"
+description = "Enables the download_progress command without any pre-configured scope."
+commands.allow = ["download_progress"]
+
+[[permission]]
+identifier = "deny-download-progress"
+description = "Denies the download_progress command without any pre-configured scope."
+commands.deny = ["download_progress"]

@@ -1,0 +1,2 @@
+-keep class com.yausername.youtubedl_android.mapper.** { *; }
+-keep class app.getyoink.downloader.** { *; }
