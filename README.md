@@ -42,6 +42,22 @@ npm run tauri -- android build --debug --apk --target aarch64
 
 O mesmo comando está disponível como `npm run android:apk`.
 
+## APK com assinatura de produção
+
+O build de release usa uma chave própria do getYoink, separada da chave de debug. A configuração privada fica, por padrão, em `%USERPROFILE%/.android/getYoink-release/keystore.properties`, fora do repositório. Para outro local ou CI, defina `YOINK_SIGNING_PROPERTIES` com o caminho do arquivo. Ele deve conter `storeFile` (caminho absoluto do JKS, usando `/` no Windows), `storePassword`, `keyAlias` e `keyPassword`. A chave e as senhas nunca devem entrar no Git, nos logs ou nos assets públicos da release.
+
+```powershell
+npm run android:release
+```
+
+O script configura o ambiente, compila em modo release, verifica a assinatura e copia o APK para `artifacts/getYoink-VERSAO-arm64.apk`. Quando o Windows não permite links simbólicos, ele copia a biblioteca Rust já compilada e conclui o empacotamento pelo Gradle, sem precisar de administrador. A compilação de release falha se a configuração de assinatura estiver ausente. O build de debug continua independente da chave de produção.
+
+Guarde no gerenciador o arquivo `getYoink-release.jks` como anexo, as duas senhas e o alias. Guardar somente as senhas não permite recuperar a chave. Mantenha um backup seguro e reutilize a mesma chave nas próximas versões; aumente a versão do app a cada publicação.
+
+A primeira instalação de produção não pode atualizar diretamente o APK assinado com a chave de debug. Será necessário desinstalar a versão de teste, o que remove o histórico local. Os arquivos exportados para Downloads permanecem. Não desinstale o app automaticamente durante o build.
+
+Referências: [assinatura Android no Tauri](https://v2.tauri.app/distribute/sign/android/), [assinatura de aplicativos Android](https://developer.android.com/studio/publish/app-signing).
+
 ## Testar por Wi-Fi (Android 11+)
 
 PC e celular precisam estar na mesma rede. No celular: Opções do desenvolvedor → Depuração sem fio → Parear dispositivo com código. O código de pareamento é temporário; informe-o somente quando formos conectar.
@@ -81,7 +97,7 @@ Testado via ADB por Wi-Fi em Moto G7 Plus (ARM64), LineageOS com Android 15:
 - Nove testes JavaScript e dois testes Rust aprovados; Kotlin Android e APK debug compilados.
 - Fila nativa de MP4 e MP3 concluída em sequência com o app fora de foco e a tela apagada; serviço e bloqueio de CPU encerrados ao esvaziar a fila.
 
-APK de teste local: `artifacts/getYoink-0.1.0-arm64-debug.apk` (ignorado pelo Git). O APK de debug inclui ferramentas de diagnóstico e é maior que uma compilação de distribuição. Não há assinatura de produção configurada.
+APK de teste local: `artifacts/getYoink-0.1.0-arm64-debug.apk` (ignorado pelo Git). O APK de debug inclui ferramentas de diagnóstico e é maior que uma compilação de distribuição. A partir da versão 0.1.1, o projeto também está configurado para gerar APKs de release com uma chave privada externa ao repositório.
 
 ## Limites desta primeira versão
 

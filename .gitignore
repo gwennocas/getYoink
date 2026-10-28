@@ -14,6 +14,7 @@ src-tauri/gen/android/app/src/main/jniLibs/
 src-tauri/gen/android/app/src/main/assets/
 *.keystore
 *.jks
+keystore.properties
 artifacts/*.apk
 src-tauri/gen/schemas/
 .env
