@@ -1,6 +1,7 @@
 import './style.css';
 import { icon } from './icons.js';
 import { call, native } from './native.js';
+import { reconcileDownloads } from './background-queue.js';
 import { validateUrl, escapeHtml as esc, duration, publicError } from './domain.js';
 
 function readHistory() { try { const h = JSON.parse(localStorage.getItem('getyoink-history') || '[]'); return Array.isArray(h) ? h.slice(0, 100).filter(x => x && typeof x.title === 'string') : []; } catch { return []; } }
@@ -19,7 +20,7 @@ app.innerHTML = `
       <div class="feature-grid"><article class="feature-card"><span class="feature-icon green">${icon('bolt')}</span><h3>Do link pro play.</h3><p>Cole, escolha o formato<br> e deixe o resto com a gente.</p></article><article class="feature-card"><span class="feature-icon orange">${icon('music')}</span><h3>Seu formato favorito.</h3><p>MP4 pra assistir.<br> MP3 pra levar no bolso.</p></article><article class="feature-card"><span class="feature-icon aqua">${icon('shield')}</span><h3>Fica com você.</h3><p>Sem conta, sem cookies.<br> Os arquivos são seus.</p></article></div>
     </section>
     <section id="history-panel" class="panel" hidden><div class="section-heading"><h2>Seus últimos yoinks.</h2><button id="clear-history" class="text-button">Limpar histórico</button></div><div id="history"></div><p class="muted footnote">O histórico fica neste dispositivo. Limpar a lista não apaga os arquivos.</p></section>
-    <section id="settings-panel" class="panel" hidden><article class="card"><div class="card-heading"><span class="feature-icon orange">${icon('refresh')}</span><h2>Sempre pronto pro próximo link.</h2></div><p class="muted">Os sites mudam. Atualize o yt-dlp quando um link público deixar de funcionar.</p><div class="engine-info"><span>yt-dlp</span><code id="engine-version">Verificando…</code></div><button id="update-engine" class="primary-button">${icon('refresh')} Atualizar yt-dlp</button><p id="update-status" class="muted footnote" role="status"></p></article><article class="card settings-note">${icon('shield')}<div><h3>Só conteúdo público.</h3><p>O getYoink não usa login ou cookies. Posts privados e conteúdos que exigem autenticação não são baixados.</p></div></article><article class="card settings-note">${icon('folder')}<div><h3>Um lugar pros seus arquivos.</h3><p id="settings-destination">Downloads/getYoink. No Android, os arquivos são publicados na pasta Downloads do sistema.</p><p>Mantenha o app aberto durante o download nesta versão.</p></div></article></section>
+    <section id="settings-panel" class="panel" hidden><article class="card"><div class="card-heading"><span class="feature-icon orange">${icon('refresh')}</span><h2>Sempre pronto pro próximo link.</h2></div><p class="muted">Os sites mudam. Atualize o yt-dlp quando um link público deixar de funcionar.</p><div class="engine-info"><span>yt-dlp</span><code id="engine-version">Verificando…</code></div><button id="update-engine" class="primary-button">${icon('refresh')} Atualizar yt-dlp</button><p id="update-status" class="muted footnote" role="status"></p></article><article class="card settings-note">${icon('shield')}<div><h3>Só conteúdo público.</h3><p>O getYoink não usa login ou cookies. Posts privados e conteúdos que exigem autenticação não são baixados.</p></div></article><article class="card settings-note">${icon('folder')}<div><h3>Um lugar pros seus arquivos.</h3><p id="settings-destination">Downloads/getYoink. No Android, os arquivos são publicados na pasta Downloads do sistema.</p><p id="background-hint">Mantenha o app aberto durante o download nesta versão.</p></div></article></section>
     <footer><span>feito para guardar o que importa.</span><span>getYoink <span class="footer-star">✳</span> local por natureza</span></footer>
   </main><div id="toast" class="toast" role="status" hidden></div>`;
 
@@ -60,9 +61,16 @@ $('#download').addEventListener('click', async () => {
   if (adding || state.busy || state.updating) return;
   adding = true; $('#download').disabled = true;
   const format = state.format, quality = $('#quality').value;
-  try { const url = validateUrl($('#url').value); const info = state.info && state.url === url ? state.info : await inspect(); if (!info) return;
-    state.queue.push({ id: crypto.randomUUID(), url, title: info.title, format, quality, status: 'waiting', progress: 0 });
-    renderLists(); runQueue(); toast('Adicionado à fila. Pode colar o próximo link.');
+  try { await engineReady; if (native && !state.engine) throw new Error('Não foi possível iniciar o motor. Reabra o app e tente novamente.'); const url = validateUrl($('#url').value); const info = state.info && state.url === url ? state.info : await inspect(); if (!info) return;
+    const job = { id: crypto.randomUUID(), url, title: info.title, format, quality, status: 'waiting', progress: 0 };
+    if (state.engine?.backgroundDownloads) {
+      await call('download_video', { request: job });
+      await syncBackgroundQueue();
+      toast('Adicionado à fila. Pode sair do app; o download continua.');
+    } else {
+      state.queue.push(job);
+      renderLists(); runQueue(); toast('Adicionado à fila. Pode colar o próximo link.');
+    }
   } catch (e) { error(publicError(e)); } finally { adding = false; $('#download').disabled = false; }
 });
 let running = false;
@@ -75,17 +83,51 @@ async function runQueue() {
   catch (e) { job.status = 'failed'; job.error = publicError(e); }
   finally { clearInterval(poll); running = false; renderLists(); runQueue(); }
 }
+let syncing = false;
+async function syncBackgroundQueue() {
+  if (syncing || !state.engine?.backgroundDownloads) return;
+  syncing = true;
+  try {
+    const { jobs } = await call('download_progress', { id: '' });
+    const next = reconcileDownloads(state.queue, jobs, state.history);
+    state.queue = next.queue; state.history = next.history;
+    persist();
+    try { localStorage.setItem('getyoink-background-queue', JSON.stringify(state.queue)); } catch { /* Native results remain available. */ }
+    renderLists();
+    if (next.finished) toast('Yoink! Arquivo salvo no dispositivo.');
+  } catch (e) { $('#update-status').textContent = publicError(e); }
+  finally { syncing = false; }
+}
+setInterval(() => { if (!document.hidden) syncBackgroundQueue(); }, 1500);
+document.addEventListener('visibilitychange', () => { if (!document.hidden) syncBackgroundQueue(); });
+window.addEventListener('focus', () => syncBackgroundQueue());
 $('#clear-history').addEventListener('click', () => { state.history = []; persist(); renderLists(); });
+let backgroundRestored = false;
 async function engineStatus() {
   if (!native) { $('#engine-version').textContent = 'Prévia web'; return; }
-  try { state.engine = await call('engine_status'); $('#engine-version').textContent = state.engine.version; if (state.engine.destination) { $('#destination').textContent = state.engine.destination; $('#settings-destination').textContent = state.engine.destination; } }
+  try { state.engine = await call('engine_status');
+    if (state.engine.backgroundDownloads) {
+      if (!backgroundRestored) {
+        try { const saved = JSON.parse(localStorage.getItem('getyoink-background-queue') || '[]'); if (Array.isArray(saved)) state.queue = saved.filter(j => j && typeof j.id === 'string'); } catch { /* Native snapshot restores the queue. */ }
+        backgroundRestored = true;
+      }
+      $('#background-hint').textContent = 'Pode trocar de app ou apagar a tela: a fila continua no Android. Permita as notificações para acompanhar o progresso.';
+      await syncBackgroundQueue();
+    }
+    $('#engine-version').textContent = state.engine.version;
+    if (state.engine.destination) {
+      $('#destination').textContent = state.engine.destination;
+      $('#settings-destination').textContent = state.engine.destination;
+    }
+  }
   catch (e) { $('#engine-version').textContent = 'Indisponível'; $('#update-status').textContent = publicError(e); }
 }
 $('#update-engine').addEventListener('click', async () => {
-  if (running || state.queue.some(j => j.status === 'waiting') || state.busy) { toast('Aguarde a fila e a consulta terminarem antes de atualizar.'); return; }
+  if (running || state.queue.some(j => ['waiting', 'running'].includes(j.status)) || state.busy) { toast('Aguarde a fila e a consulta terminarem antes de atualizar.'); return; }
   state.updating = true; $('#update-engine').disabled = true; $('#inspect').disabled = true; $('#update-status').textContent = 'Baixando a versão estável do yt-dlp…';
   try { const result = await call('update_engine'); $('#update-status').textContent = result.message; await engineStatus(); toast('yt-dlp atualizado e pronto.'); }
   catch (e) { $('#update-status').textContent = publicError(e); }
   finally { state.updating = false; $('#update-engine').disabled = false; $('#inspect').disabled = false; }
 });
-renderLists(); engineStatus();
+renderLists();
+const engineReady = engineStatus();

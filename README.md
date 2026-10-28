@@ -9,6 +9,7 @@ Um link. Seu arquivo. Aplicativo Tauri 2 + Rust, com integração Android em Kot
 - Extração MP3 em 128, 192 ou 320 kbps. A qualidade da fonte limita o resultado.
 - Consulta de título, autor e duração; fila sequencial e progresso real do motor.
 - Histórico local dos downloads concluídos, com caminho do arquivo.
+- Android: fila nativa em segundo plano, com progresso e resultado em notificações. Pode trocar de app ou apagar a tela.
 - Android: exportação via MediaStore para `Downloads/getYoink`, sem acesso amplo ao armazenamento.
 - Ajustes → **Atualizar yt-dlp** baixa a versão estável dentro do Android. Não requer reinstalar o APK.
 - Sem login, cookies ou suporte a publicações privadas. O app ignora configurações externas do yt-dlp.
@@ -77,13 +78,18 @@ Testado via ADB por Wi-Fi em Moto G7 Plus (ARM64), LineageOS com Android 15:
 - Consulta e download do YouTube em MP4 e conversão para MP3 a 320 kbps.
 - Consulta e download em MP4 de um Reel público do Instagram, sem cookies.
 - Arquivos exportados para `Downloads/getYoink` e histórico atualizado.
-- Cinco testes JavaScript e dois testes Rust aprovados; `cargo check` da aplicação aprovado.
+- Nove testes JavaScript e dois testes Rust aprovados; Kotlin Android e APK debug compilados.
+- Fila nativa de MP4 e MP3 concluída em sequência com o app fora de foco e a tela apagada; serviço e bloqueio de CPU encerrados ao esvaziar a fila.
 
 APK de teste local: `artifacts/getYoink-0.1.0-arm64-debug.apk` (ignorado pelo Git). O APK de debug inclui ferramentas de diagnóstico e é maior que uma compilação de distribuição. Não há assinatura de produção configurada.
 
 ## Limites desta primeira versão
 
-Mantenha o app aberto durante o download. A fila em andamento não sobrevive ao fechamento do processo; o histórico concluído persiste no armazenamento local da WebView. Não há serviço em primeiro plano, retomada após reinício, playlists, fotos ou login. Alguns links públicos podem exigir autenticação ou sofrer bloqueio do provedor; nesses casos o app apresenta a falha e não tenta usar cookies. Atualizar o yt-dlp não garante contornar restrições do site.
+No Android, a fila roda em um serviço em primeiro plano e continua ao trocar de app ou apagar a tela, sem depender dos temporizadores da interface. No Android 13+, permita as notificações para ver o progresso; negar essa permissão não impede o download. Ao voltar, a interface sincroniza os resultados e atualiza o histórico.
+
+Forçar a parada do app, reiniciar o celular ou o sistema encerrar o processo interrompe a fila. Na próxima abertura, os itens interrompidos aparecem como falha; adicione os links novamente. Resultados concluídos ficam preservados. Não há retomada automática após reinício, playlists, fotos ou login. No desktop, mantenha o app aberto durante o download.
+
+O Android 15+ limita serviços `dataSync` em segundo plano a seis horas por período de 24 horas. Ao receber o aviso de limite, o serviço encerra a fila e registra a interrupção, conforme a [documentação do Android](https://developer.android.com/develop/background-work/services/fgs/timeout). Alguns links públicos podem exigir autenticação ou sofrer bloqueio do provedor; nesses casos o app apresenta a falha e não tenta usar cookies. Atualizar o yt-dlp não garante contornar restrições do site.
 
 ## Estrutura
 

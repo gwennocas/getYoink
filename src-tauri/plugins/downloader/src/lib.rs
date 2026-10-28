@@ -15,6 +15,8 @@ pub struct DownloadRequest {
     pub url: String,
     pub format: String,
     pub quality: String,
+    #[serde(default)]
+    pub title: String,
 }
 
 pub fn validate_url(value: &str) -> Result<String, String> {
@@ -171,6 +173,7 @@ mod tests {
             url: "https://youtu.be/x".into(),
             format: "mp3".into(),
             quality: "--exec=bad".into(),
+            title: "Teste".into(),
         };
         assert!(validate_request(r).is_err());
     }
