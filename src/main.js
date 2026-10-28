@@ -9,7 +9,7 @@ const state = { tab: 'download', format: 'mp4', quality: '1080', info: null, url
 let toastTimer;
 const app = document.querySelector('#app');
 app.innerHTML = `
-  <header class="topbar"><a class="brand" href="#" aria-label="getYoink, início"><span class="brand-icon">${icon('download')}</span><span>get<span class="brand-accent">Yoink</span><span class="brand-dot">.</span></span></a><span class="header-note">um link. seu arquivo.</span><span class="version">v0.1.1 <span class="status-dot"></span></span></header>
+  <header class="topbar"><a class="brand" href="#" aria-label="getYoink, início"><span class="brand-icon">${icon('download')}</span><span>get<span class="brand-accent">Yoink</span><span class="brand-dot">.</span></span></a><span class="header-note">um link. seu arquivo.</span><span class="version">v0.1.2 <span class="status-dot"></span></span></header>
   <main>
     <section class="hero"><span class="eyebrow"><span class="tiny-grid">⊞</span> PEGA E LEVA.</span><h1>Se você curtiu,<br class="mobile-break"> <span>guarda.</span></h1><p>Vídeos e áudios dos seus links favoritos.<br>Direto pro seu dispositivo, sem complicação.</p><div class="platforms"><span>${icon('youtube')} YouTube</span><span class="separator">/</span><span>${icon('instagram')} Instagram</span><span class="public-pill">somente públicos</span></div></section>
     <nav class="tabs" aria-label="Navegação"><button data-tab="download" class="tab active">${icon('download')} Baixar</button><button data-tab="history" class="tab">${icon('history')} Histórico <span id="history-count" class="count">0</span></button><button data-tab="settings" class="tab">${icon('settings')} Ajustes</button></nav>

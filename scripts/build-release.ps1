@@ -17,7 +17,10 @@ try {
     $yoinkBuildProcess = Start-Process -FilePath $env:ComSpec `
         -ArgumentList '/d', '/c', 'npm.cmd run android:build' -WindowStyle Hidden `
         -RedirectStandardOutput $yoinkReleaseLog -RedirectStandardError $yoinkReleaseErrorLog `
-        -Wait -PassThru
+        -PassThru
+    # Wait for the command itself, not a Windows job containing detached descendants.
+    $yoinkBuildProcess.WaitForExit()
+    $yoinkBuildProcess.Refresh()
     if ($yoinkBuildProcess.ExitCode -ne 0) {
         $yoinkBuildOutput = (Get-Content -LiteralPath $yoinkReleaseLog -Raw) +
             (Get-Content -LiteralPath $yoinkReleaseErrorLog -Raw)

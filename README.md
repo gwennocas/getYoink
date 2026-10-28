@@ -58,6 +58,14 @@ A primeira instalação de produção não pode atualizar diretamente o APK assi
 
 Referências: [assinatura Android no Tauri](https://v2.tauri.app/distribute/sign/android/), [assinatura de aplicativos Android](https://developer.android.com/studio/publish/app-signing).
 
+Antes de publicar um APK de produção, teste o próprio artefato otimizado no aparelho. A versão 0.1.2 preserva os construtores dos campos extras ZIP do Commons Compress, usados por reflexão ao extrair o motor; removê-los com R8 causava fechamento na abertura da versão 0.1.1. A assinatura válida e o build concluído não verificam esse comportamento em execução.
+
+```powershell
+./scripts/smoke-android-release.ps1 -Device IP:PORTA -ApkPath artifacts/getYoink-0.1.2-arm64.apk
+```
+
+O teste instala a atualização sem desinstalar ou limpar dados e abre o app três vezes, verificando processo e logs de crash. Execute com a fila vazia: cada abertura usa uma parada forçada, que interrompe downloads ativos. Complete a validação consultando um vídeo e realizando um download no APK de release.
+
 ## Testar por Wi-Fi (Android 11+)
 
 PC e celular precisam estar na mesma rede. No celular: Opções do desenvolvedor → Depuração sem fio → Parear dispositivo com código. O código de pareamento é temporário; informe-o somente quando formos conectar.
