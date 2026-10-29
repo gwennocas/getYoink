@@ -16,6 +16,9 @@ src-tauri/gen/android/app/src/main/assets/
 *.jks
 keystore.properties
 artifacts/*.apk
+artifacts/*.exe
+artifacts/*.zip
+src-tauri/resources/windows/
 src-tauri/gen/schemas/
 .env
 .env.*

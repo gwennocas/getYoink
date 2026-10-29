@@ -1,6 +1,11 @@
 # getYoink
 
-Um link. Seu arquivo. Aplicativo Tauri 2 + Rust, com integração Android em Kotlin para yt-dlp e FFmpeg. Interface responsiva em português com tema Gruvbox, fundo pontilhado e cartões de bordas finas.
+Um link. Seu arquivo. Aplicativo para Android e Windows em Tauri 2 + Rust, com integração Android em Kotlin para yt-dlp e FFmpeg. Interface responsiva em português com tema Gruvbox, fundo pontilhado e cartões de bordas finas.
+
+## Downloads
+
+- [Windows x64 — primeira versão de teste](https://github.com/gwennocas/getYoink/releases/tag/v0.1.2-windows.1): instalador com os motores incluídos. Ainda sem assinatura digital e com validação manual da janela pendente.
+- [Android ARM64 — v0.1.2](https://github.com/gwennocas/getYoink/releases/tag/v0.1.2): APK com assinatura de produção para Android 10 ou superior.
 
 ## Funcionalidades
 
@@ -15,6 +20,26 @@ Um link. Seu arquivo. Aplicativo Tauri 2 + Rust, com integração Android em Kot
 - Sem login, cookies ou suporte a publicações privadas. O app ignora configurações externas do yt-dlp.
 
 ## Desenvolvimento no Windows
+
+### Versão para PC (Windows x64)
+
+O instalador inclui yt-dlp, FFmpeg/FFprobe e Deno. Não é necessário instalar Python ou configurar o PATH. Os arquivos vão para a pasta Downloads/getYoink do usuário. A interface em duas colunas aproveita a janela do PC, com botão **Abrir pasta de downloads**, **Ctrl + L** para selecionar o campo de link e **Ctrl + Enter** para baixar. Pode minimizar a janela; mantenha o app e o PC ligados até concluir a fila. O fechamento é bloqueado enquanto houver tarefas em andamento.
+
+Para desenvolver a versão PC, instale Node.js LTS, Rust estável MSVC e Visual Studio Build Tools com C++. JDK e SDK Android são necessários apenas para Android.
+
+```powershell
+npm install
+npm run pc:dev
+npm run pc:build
+```
+
+O primeiro comando PC baixa os motores das releases oficiais no GitHub e verifica o SHA-256 informado em cada release. Os downloads ficam em `.tools/windows-engines`, e os recursos incluídos no instalador em `src-tauri/resources/windows` (ambos ignorados pelo Git). Para buscar novos motores para uma nova distribuição, remova essa pasta de recursos e execute `npm run pc:prepare` novamente.
+
+O instalador fica em `artifacts/getYoink-0.1.2-windows-x64-setup.exe`, instala para o usuário atual e usa o WebView2 do Windows (o instalador o prepara quando necessário). A distribuição local ainda não tem assinatura de código do Windows. O yt-dlp usado pelo app fica nos dados locais do usuário, permitindo **Ajustes → Atualizar yt-dlp** sem privilégios de administrador. Deno e FFmpeg acompanham a versão do instalador. As licenças e referências das versões incluídas ficam na pasta `engines` da instalação.
+
+O identificador e os builds Android são preservados. A configuração específica de Windows fica em `src-tauri/tauri.windows.conf.json`, carregada automaticamente pelo Tauri no Windows. Referência: [instaladores Windows no Tauri](https://v2.tauri.app/distribute/windows-installer/).
+
+Validação em 29/10/2026: nove testes JavaScript e dois testes Rust aprovados; compilação Windows release e instalador NSIS gerados; consulta pública e downloads reais em MP4 e MP3 concluídos com os motores incluídos, e streams/duração conferidos com FFprobe. A janela nativa abriu e reconheceu os motores e o destino. O layout e a troca de formato foram conferidos na prévia web. A automação de entrada/captura da janela nativa falhou, portanto o fluxo completo pelos controles do app, o fechamento durante tarefas e a instalação pelo assistente ainda precisam de validação manual.
 
 Pré-requisitos: Node.js LTS, Rust estável (MSVC), Visual Studio Build Tools com C++, JDK 21, SDK Android com plataforma 36, Build Tools 36, Platform Tools e NDK. O Android mínimo deste projeto é 10 (API 29).
 
@@ -91,7 +116,7 @@ npm test
 cargo test --manifest-path src-tauri/plugins/downloader/Cargo.toml
 ```
 
-No navegador, a interface abre como prévia e explica que downloads exigem o app nativo. Não há downloads simulados. No desktop, instale `yt-dlp` e `ffmpeg` no PATH; opcionalmente configure `YTDLP_PATH`. O atualizador desktop usa `yt-dlp --update`, então depende de uma instalação binária que suporte autoatualização.
+No navegador, a interface abre como prévia e explica que downloads exigem o app nativo. Não há downloads simulados. No Windows, use os comandos `pc:dev` e `pc:build` para preparar os motores incluídos. Em outros desktops, instale `yt-dlp` e `ffmpeg` no PATH; opcionalmente configure `YTDLP_PATH`. Nesse caso, a atualização depende de uma instalação binária que suporte `yt-dlp --update`.
 
 ### Validação em aparelho real — 28/10/2026
 

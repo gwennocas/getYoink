@@ -1,6 +1,7 @@
 import './style.css';
 import { icon } from './icons.js';
 import { call, native } from './native.js';
+import { getCurrentWindow } from '@tauri-apps/api/window';
 import { reconcileDownloads } from './background-queue.js';
 import { validateUrl, escapeHtml as esc, duration, publicError } from './domain.js';
 
@@ -21,6 +22,7 @@ app.innerHTML = `
     </section>
     <section id="history-panel" class="panel" hidden><div class="section-heading"><h2>Seus últimos yoinks.</h2><button id="clear-history" class="text-button">Limpar histórico</button></div><div id="history"></div><p class="muted footnote">O histórico fica neste dispositivo. Limpar a lista não apaga os arquivos.</p></section>
     <section id="settings-panel" class="panel" hidden><article class="card"><div class="card-heading"><span class="feature-icon orange">${icon('refresh')}</span><h2>Sempre pronto pro próximo link.</h2></div><p class="muted">Os sites mudam. Atualize o yt-dlp quando um link público deixar de funcionar.</p><div class="engine-info"><span>yt-dlp</span><code id="engine-version">Verificando…</code></div><button id="update-engine" class="primary-button">${icon('refresh')} Atualizar yt-dlp</button><p id="update-status" class="muted footnote" role="status"></p></article><article class="card settings-note">${icon('shield')}<div><h3>Só conteúdo público.</h3><p>O getYoink não usa login ou cookies. Posts privados e conteúdos que exigem autenticação não são baixados.</p></div></article><article class="card settings-note">${icon('folder')}<div><h3>Um lugar pros seus arquivos.</h3><p id="settings-destination">Downloads/getYoink. No Android, os arquivos são publicados na pasta Downloads do sistema.</p><p id="background-hint">Mantenha o app aberto durante o download nesta versão.</p></div></article></section>
+    <div id="desktop-toolbar" hidden><span>Ctrl + L: link · Ctrl + Enter: baixar</span><button id="open-folder" class="text-button">${icon('folder')} Abrir pasta de downloads</button></div>
     <footer><span>feito para guardar o que importa.</span><span>getYoink <span class="footer-star">✳</span> local por natureza</span></footer>
   </main><div id="toast" class="toast" role="status" hidden></div>`;
 
@@ -39,6 +41,12 @@ document.querySelectorAll('[data-tab]').forEach(button => button.addEventListene
 document.querySelectorAll('[data-format]').forEach(button => button.addEventListener('click', () => { state.format = button.dataset.format; document.querySelectorAll('[data-format]').forEach(b => { b.classList.toggle('selected', b === button); b.setAttribute('aria-pressed', String(b === button)); }); $('#quality').innerHTML = state.format === 'mp3' ? '<option value="320">320 kbps · Alta qualidade</option><option value="192">192 kbps · Equilibrado</option><option value="128">128 kbps · Menor arquivo</option>' : '<option value="1080">Até 1080p · Full HD</option><option value="720">Até 720p · HD</option><option value="480">Até 480p · Menor arquivo</option><option value="best">Melhor disponível</option>'; $('#download span').textContent = state.format === 'mp3' ? 'Baixar áudio' : 'Baixar vídeo'; }));
 $('#paste').addEventListener('click', async () => { try { $('#url').value = await navigator.clipboard.readText(); $('#url').dispatchEvent(new Event('input')); $('#url').focus(); } catch { toast('Toque no campo de link e use a opção Colar do dispositivo.'); $('#url').focus(); } });
 $('#url').addEventListener('input', () => { state.info = null; $('#video-info').hidden = true; error(''); });
+$('#open-folder').addEventListener('click', async () => { try { await call('open_download_folder'); } catch (e) { toast(publicError(e)); } });
+document.addEventListener('keydown', event => {
+  if (!state.engine?.desktop || !(event.ctrlKey || event.metaKey)) return;
+  if (event.key.toLowerCase() === 'l') { event.preventDefault(); $('[data-tab="download"]').click(); $('#url').focus(); $('#url').select(); }
+  if (event.key === 'Enter') { event.preventDefault(); $('#download').click(); }
+});
 async function inspect() {
   if (state.busy || state.updating) return null;
   error('');
@@ -103,9 +111,23 @@ document.addEventListener('visibilitychange', () => { if (!document.hidden) sync
 window.addEventListener('focus', () => syncBackgroundQueue());
 $('#clear-history').addEventListener('click', () => { state.history = []; persist(); renderLists(); });
 let backgroundRestored = false;
+let desktopCloseListener = false;
 async function engineStatus() {
   if (!native) { $('#engine-version').textContent = 'Prévia web'; return; }
   try { state.engine = await call('engine_status');
+    if (state.engine.desktop) {
+      document.body.classList.add('desktop');
+      $('#desktop-toolbar').hidden = false;
+      $('#background-hint').textContent = 'Pode minimizar a janela: a fila continua. Mantenha o app aberto e o PC ligado até concluir os downloads.';
+      if (!desktopCloseListener) {
+        desktopCloseListener = true;
+        await getCurrentWindow().onCloseRequested(event => {
+          if (running || adding || state.busy || state.updating || state.queue.some(j => j.status === 'waiting')) {
+            event.preventDefault(); toast('Aguarde as tarefas terminarem antes de fechar. Você pode minimizar a janela.');
+          }
+        });
+      }
+    }
     if (state.engine.backgroundDownloads) {
       if (!backgroundRestored) {
         try { const saved = JSON.parse(localStorage.getItem('getyoink-background-queue') || '[]'); if (Array.isArray(saved)) state.queue = saved.filter(j => j && typeof j.id === 'string'); } catch { /* Native snapshot restores the queue. */ }

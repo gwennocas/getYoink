@@ -126,6 +126,16 @@ async fn engine_status<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
 async fn update_engine<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
     dispatch(app, "update", json!({})).await
 }
+#[tauri::command]
+async fn open_download_folder<R: Runtime>(app: AppHandle<R>) -> Result<Value, String> {
+    #[cfg(target_os = "android")]
+    {
+        let _ = app;
+        Err("Disponível na versão para PC.".into())
+    }
+    #[cfg(not(target_os = "android"))]
+    dispatch(app, "open_folder", json!({})).await
+}
 
 pub fn init<R: Runtime>() -> TauriPlugin<R> {
     Builder::new("downloader")
@@ -134,7 +144,8 @@ pub fn init<R: Runtime>() -> TauriPlugin<R> {
             download_video,
             download_progress,
             engine_status,
-            update_engine
+            update_engine,
+            open_download_folder
         ])
         .setup(|_app, _api| {
             #[cfg(target_os = "android")]
