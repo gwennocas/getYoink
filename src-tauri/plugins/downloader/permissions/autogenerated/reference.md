@@ -9,6 +9,7 @@ Permite downloads públicos e atualização do yt-dlp.
 - `allow-download-progress`
 - `allow-engine-status`
 - `allow-update-engine`
+- `allow-open-download-folder`
 
 ## Permission Table
 
@@ -119,6 +120,32 @@ Enables the inspect_video command without any pre-configured scope.
 <td>
 
 Denies the inspect_video command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`downloader:allow-open-download-folder`
+
+</td>
+<td>
+
+Enables the open_download_folder command without any pre-configured scope.
+
+</td>
+</tr>
+
+<tr>
+<td>
+
+`downloader:deny-open-download-folder`
+
+</td>
+<td>
+
+Denies the open_download_folder command without any pre-configured scope.
 
 </td>
 </tr>

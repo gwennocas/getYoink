@@ -4,6 +4,7 @@ const COMMANDS: &[&str] = &[
     "download_progress",
     "engine_status",
     "update_engine",
+    "open_download_folder",
 ];
 fn main() {
     tauri_plugin::Builder::new(COMMANDS)

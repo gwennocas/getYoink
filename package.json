@@ -1,6 +1,6 @@
 {
   "name": "getyoink",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "type": "module",
   "scripts": {
@@ -9,8 +9,12 @@
     "preview": "vite preview --host 0.0.0.0",
     "test": "node --test tests/*.test.js",
     "tauri": "tauri",
+    "pc:prepare": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/prepare-windows.ps1",
+    "pc:dev": "npm run pc:prepare && tauri dev",
+    "pc:build": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows.ps1",
     "android:dev": "tauri android dev",
     "android:build": "tauri android build --apk --target aarch64",
+    "android:release": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-release.ps1",
     "android:apk": "tauri android build --debug --apk --target aarch64"
   },
   "dependencies": { "@tauri-apps/api": "^2.0.0" },

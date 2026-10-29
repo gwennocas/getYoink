@@ -1,3 +1,3 @@
 [default]
 description = "Permite downloads públicos e atualização do yt-dlp."
-permissions = ["allow-inspect-video", "allow-download-video", "allow-download-progress", "allow-engine-status", "allow-update-engine"]
+permissions = ["allow-inspect-video", "allow-download-video", "allow-download-progress", "allow-engine-status", "allow-update-engine", "allow-open-download-folder"]

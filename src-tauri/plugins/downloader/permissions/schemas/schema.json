@@ -343,6 +343,18 @@
           "markdownDescription": "Denies the inspect_video command without any pre-configured scope."
         },
         {
+          "description": "Enables the open_download_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "allow-open-download-folder",
+          "markdownDescription": "Enables the open_download_folder command without any pre-configured scope."
+        },
+        {
+          "description": "Denies the open_download_folder command without any pre-configured scope.",
+          "type": "string",
+          "const": "deny-open-download-folder",
+          "markdownDescription": "Denies the open_download_folder command without any pre-configured scope."
+        },
+        {
           "description": "Enables the update_engine command without any pre-configured scope.",
           "type": "string",
           "const": "allow-update-engine",
@@ -355,10 +367,10 @@
           "markdownDescription": "Denies the update_engine command without any pre-configured scope."
         },
         {
-          "description": "Permite downloads públicos e atualização do yt-dlp.\n#### This default permission set includes:\n\n- `allow-inspect-video`\n- `allow-download-video`\n- `allow-download-progress`\n- `allow-engine-status`\n- `allow-update-engine`",
+          "description": "Permite downloads públicos e atualização do yt-dlp.\n#### This default permission set includes:\n\n- `allow-inspect-video`\n- `allow-download-video`\n- `allow-download-progress`\n- `allow-engine-status`\n- `allow-update-engine`\n- `allow-open-download-folder`",
           "type": "string",
           "const": "default",
-          "markdownDescription": "Permite downloads públicos e atualização do yt-dlp.\n#### This default permission set includes:\n\n- `allow-inspect-video`\n- `allow-download-video`\n- `allow-download-progress`\n- `allow-engine-status`\n- `allow-update-engine`"
+          "markdownDescription": "Permite downloads públicos e atualização do yt-dlp.\n#### This default permission set includes:\n\n- `allow-inspect-video`\n- `allow-download-video`\n- `allow-download-progress`\n- `allow-engine-status`\n- `allow-update-engine`\n- `allow-open-download-folder`"
         }
       ]
     }

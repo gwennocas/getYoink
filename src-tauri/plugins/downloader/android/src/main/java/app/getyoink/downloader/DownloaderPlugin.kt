@@ -1,9 +1,6 @@
 package app.getyoink.downloader
 
 import android.app.Activity
-import android.content.ContentValues
-import android.os.Environment
-import android.provider.MediaStore
 import app.tauri.annotation.Command
 import app.tauri.annotation.InvokeArg
 import app.tauri.annotation.TauriPlugin
@@ -11,12 +8,7 @@ import app.tauri.plugin.Invoke
 import app.tauri.plugin.JSObject
 import app.tauri.plugin.Plugin
 import com.yausername.youtubedl_android.YoutubeDL
-import com.yausername.youtubedl_android.YoutubeDLRequest
-import com.yausername.ffmpeg.FFmpeg
-import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
-import java.util.concurrent.locks.ReentrantReadWriteLock
 import kotlin.concurrent.read
 import kotlin.concurrent.write
 
@@ -28,6 +20,7 @@ class JobArgs {
     lateinit var url: String
     lateinit var format: String
     lateinit var quality: String
+    var title: String = "Download"
 }
 @InvokeArg
 class ProgressArgs { lateinit var id: String }
@@ -35,14 +28,9 @@ class ProgressArgs { lateinit var id: String }
 @TauriPlugin
 class DownloaderPlugin(private val activity: Activity) : Plugin(activity) {
     private val executor = Executors.newCachedThreadPool()
-    private val percentages = ConcurrentHashMap<String, Float>()
-    private val engineLock = ReentrantReadWriteLock()
+    private val engineLock = DownloadEngine.lock
 
-    @Synchronized
-    private fun initialize() {
-        YoutubeDL.getInstance().init(activity.applicationContext)
-        FFmpeg.getInstance().init(activity.applicationContext)
-    }
+    private fun initialize() = DownloadEngine.initialize(activity.applicationContext)
 
     private fun background(invoke: Invoke, action: () -> JSObject) {
         executor.execute {
@@ -51,12 +39,7 @@ class DownloaderPlugin(private val activity: Activity) : Plugin(activity) {
         }
     }
 
-    private fun request(url: String): YoutubeDLRequest = YoutubeDLRequest(url).apply {
-        // Never load user configuration, credentials, cookies or a playlist.
-        addOption("--ignore-config")
-        addOption("--no-playlist")
-        addOption("--socket-timeout", "30")
-    }
+    private fun request(url: String) = DownloadEngine.request(url)
 
     @Command
     fun status(invoke: Invoke) = background(invoke) {
@@ -65,6 +48,7 @@ class DownloaderPlugin(private val activity: Activity) : Plugin(activity) {
             JSObject().apply {
                 put("version", YoutubeDL.getInstance().versionName(activity) ?: "incluído no app")
                 put("destination", "Downloads / getYoink")
+                put("backgroundDownloads", true)
             }
         }
     }
@@ -88,70 +72,37 @@ class DownloaderPlugin(private val activity: Activity) : Plugin(activity) {
     @Command
     fun progress(invoke: Invoke) {
         val args = invoke.parseArgs(ProgressArgs::class.java)
-        invoke.resolve(JSObject().apply { put("percent", percentages[args.id] ?: 0f) })
+        invoke.resolve(JSObject().apply {
+            if (args.id.isEmpty()) put("jobs", DownloadJobs.snapshot(activity))
+            else {
+                val job = DownloadJobs.get(activity, args.id)
+                if (job != null) job.keys().forEach { key -> put(key, job.get(key)) }
+                else put("status", "missing")
+            }
+        })
     }
 
     @Command
     fun download(invoke: Invoke) {
         val args = invoke.parseArgs(JobArgs::class.java)
-        background(invoke) {
-            engineLock.read {
-                initialize()
-                val work = File(activity.cacheDir, "yoink-${args.id}")
-                check(work.mkdirs() || work.isDirectory) { "Não foi possível criar a pasta temporária." }
-                try {
-                    percentages[args.id] = 0f
-                    val req = request(args.url).apply {
-                        addOption("-o", File(work, "%(title).150B [%(id)s].%(ext)s").absolutePath)
-                        addOption("--restrict-filenames")
-                        addOption("--print", "after_move:filepath")
-                        addOption("--no-simulate")
-                        addOption("--progress")
-                        addOption("--newline")
-                        if (args.format == "mp3") {
-                            addOption("-x")
-                            addOption("--audio-format", "mp3")
-                            addOption("--audio-quality", "${args.quality}K")
-                        } else {
-                            val limit = if (args.quality == "best") "" else "[height<=${args.quality}]"
-                            addOption("-f", "bv*[ext=mp4]$limit+ba[ext=m4a]/b[ext=mp4]$limit")
-                            addOption("--merge-output-format", "mp4")
-                        }
-                    }
-                    YoutubeDL.getInstance().execute(req, args.id) { percent, _, _ ->
-                        percentages[args.id] = percent.coerceIn(0f, 99f)
-                    }
-                    val file = work.listFiles()?.firstOrNull { it.isFile && it.extension == args.format }
-                        ?: error("O motor não gerou um arquivo ${args.format.uppercase()}.")
-                    val uri = exportToDownloads(file, args.format)
-                    JSObject().apply { put("path", "Downloads/getYoink/${file.name}"); put("uri", uri) }
-                } finally {
-                    percentages.remove(args.id)
-                    // This directory is scoped to the validated job ID under our own cache.
-                    work.deleteRecursively()
-                }
-            }
-        }
-    }
-
-    private fun exportToDownloads(file: File, format: String): String {
-        val resolver = activity.contentResolver
-        val values = ContentValues().apply {
-            put(MediaStore.Downloads.DISPLAY_NAME, file.name)
-            put(MediaStore.Downloads.MIME_TYPE, if (format == "mp3") "audio/mpeg" else "video/mp4")
-            put(MediaStore.Downloads.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/getYoink")
-            put(MediaStore.Downloads.IS_PENDING, 1)
-        }
-        val uri = resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values)
-            ?: error("Não foi possível criar o arquivo em Downloads.")
+        var enqueued = false
         try {
-            resolver.openOutputStream(uri)?.use { output -> file.inputStream().use { it.copyTo(output) } }
-                ?: error("Não foi possível escrever o arquivo em Downloads.")
-            resolver.update(uri, ContentValues().apply { put(MediaStore.Downloads.IS_PENDING, 0) }, null, null)
-            return uri.toString()
+            // Called from the visible app, before the user switches away.
+            if (android.os.Build.VERSION.SDK_INT >= 33 &&
+                activity.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) !=
+                android.content.pm.PackageManager.PERMISSION_GRANTED &&
+                !activity.getPreferences(0).getBoolean("notification-requested", false)) {
+                activity.getPreferences(0).edit().putBoolean("notification-requested", true).apply()
+                activity.requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 7201)
+            }
+            DownloadJobs.enqueue(activity, args)
+            enqueued = true
+            activity.startForegroundService(android.content.Intent(activity, DownloadService::class.java)
+                .putExtra("id", args.id))
+            invoke.resolve(JSObject().apply { put("queued", true) })
         } catch (e: Exception) {
-            resolver.delete(uri, null, null)
-            throw e
+            if (enqueued) DownloadJobs.update(activity, args.id, "failed", error = e.message ?: "Não foi possível iniciar o download.")
+            invoke.reject(e.message ?: "Não foi possível iniciar o download em segundo plano.")
         }
     }
 

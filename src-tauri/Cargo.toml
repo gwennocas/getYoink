@@ -1,6 +1,6 @@
 [package]
 name = "getyoink"
-version = "0.1.0"
+version = "0.1.2"
 description = "Vídeos e áudios públicos, direto para o seu dispositivo."
 authors = ["Gwen"]
 edition = "2021"

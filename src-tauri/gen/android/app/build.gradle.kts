@@ -14,6 +14,15 @@ val tauriProperties = Properties().apply {
     }
 }
 
+// Private signing material lives outside the checkout. Override the path for CI.
+val signingPropertiesFile = file(
+    System.getenv("YOINK_SIGNING_PROPERTIES")
+        ?: "${System.getProperty("user.home")}/.android/getYoink-release/keystore.properties"
+)
+val releaseSigningProperties = Properties().apply {
+    if (signingPropertiesFile.isFile) signingPropertiesFile.inputStream().use { load(it) }
+}
+
 android {
     compileSdk = 36
     namespace = "app.getyoink.mobile"
@@ -24,6 +33,17 @@ android {
         targetSdk = 36
         versionCode = tauriProperties.getProperty("tauri.android.versionCode", "1").toInt()
         versionName = tauriProperties.getProperty("tauri.android.versionName", "1.0")
+    }
+    signingConfigs {
+        create("release") {
+            if (signingPropertiesFile.isFile) {
+                storeFile = file(releaseSigningProperties.getProperty("storeFile"))
+                storePassword = releaseSigningProperties.getProperty("storePassword")
+                keyAlias = releaseSigningProperties.getProperty("keyAlias")
+                keyPassword = releaseSigningProperties.getProperty("keyPassword")
+                storeType = "JKS"
+            }
+        }
     }
     buildTypes {
         getByName("debug") {
@@ -39,6 +59,9 @@ android {
             }
         }
         getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isDebuggable = false
+            isJniDebuggable = false
             optimization {
                enable = true
             }
@@ -59,6 +82,17 @@ android {
     }
     packaging {
         jniLibs.useLegacyPackaging = true
+    }
+}
+
+// A release must fail rather than silently produce an unsigned APK.
+tasks.configureEach {
+    if (name.startsWith("validateSigning") && name.endsWith("Release")) {
+        doFirst {
+            check(signingPropertiesFile.isFile) {
+                "Configure a assinatura de release em YOINK_SIGNING_PROPERTIES ou ~/.android/getYoink-release/keystore.properties."
+            }
+        }
     }
 }
 
